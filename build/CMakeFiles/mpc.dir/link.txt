@@ -1,0 +1,1 @@
+/usr/bin/c++   -Wall -DHAVE_CSTDDEF -I/usr/include/coin   CMakeFiles/mpc.dir/src/MPC.cpp.o CMakeFiles/mpc.dir/src/utilities.cpp.o CMakeFiles/mpc.dir/src/main.cpp.o  -o mpc  -L/usr/local/lib -lipopt -lz -lssl -luv -luWS -Wl,-rpath,/usr/local/lib 
