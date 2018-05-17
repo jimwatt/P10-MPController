@@ -32,31 +32,40 @@ string hasData(string s) {
 
 int main() {
 
-    // We set the number of timesteps to 25
-  // and the timestep evaluation frequency or evaluation
-  // period to 0.05.
+  ////////////////////////////////////////////////////
+  // Set all the paraemters here
   const int N = 10;
   const double dt = 0.2;
   const double ref_v_meterspersecond = mph2mps(60.0);
+  const double Lf = 2.67;
 
+  ////////////////////////////////////////////////////
+
+
+  double total_callback_delay_seconds = 0.1;  //initialize the call back delay to the added delay
   uWS::Hub h;
 
   // MPC is initialized here!
   MPC mpc;
 
-  h.onMessage([&mpc,&N,&dt,&ref_v_meterspersecond](uWS::WebSocket<uWS::SERVER> ws, char *data, size_t length,
-                     uWS::OpCode opCode) {
-    // "42" at the start of the message means there's a websocket message event.
-    // The 4 signifies a websocket message
-    // The 2 signifies a websocket event
-    string sdata = string(data).substr(0, length);
+  h.onMessage([&mpc,
+    &N,
+    &dt,
+    &ref_v_meterspersecond,
+    &Lf,
+    &total_callback_delay_seconds]
+  (uWS::WebSocket<uWS::SERVER> ws, char *data, size_t length, uWS::OpCode opCode) {
 
+    string sdata = string(data).substr(0, length);
     if (sdata.size() > 2 && sdata[0] == '4' && sdata[1] == '2') {
       string s = hasData(sdata);
       if (s != "") {
         auto j = json::parse(s);
         string event = j[0].get<string>();
         if (event == "telemetry") {
+
+          const time_t call_back_start_time = clock();
+
           // j[1] is the data JSON object
 
           // xy points along the desired trajectory in global frame
@@ -73,6 +82,8 @@ int main() {
           const double py = j[1]["y"];
           const double psi = j[1]["psi"];
           const double current_speed_mps = mph2mps(j[1]["speed"]);
+          const double current_steering_angle = j[1]["steering_angle"];
+          const double current_throttle = j[1]["throttle"];
 
           // convert desired tracjectory to vehicle frame
           Eigen::VectorXd ptsx_veh;
@@ -91,6 +102,15 @@ int main() {
           // current state in vehicle frame
           Eigen::VectorXd state(6);
           state << 0.0,0.0,0.0,current_speed_mps,cte,epsi;
+
+          // predict where the vehicle will be after the latency 
+          const double dts = 0.1+total_callback_delay_seconds;
+          state[0] = current_speed_mps*dts;
+          state[1] = 0;
+          state[2] = - current_speed_mps / Lf * current_steering_angle *dts;
+          state[3] = current_speed_mps + current_throttle*dts;
+          state[4] = cte + current_speed_mps*sin(epsi)*dts;
+          state[5] = epsi - current_speed_mps / Lf * current_steering_angle *dts;
 
           // call the solver
           vector<double> solutionx = mpc.Solve(state,poly_coeffs,N,dt,ref_v_meterspersecond);
@@ -142,8 +162,12 @@ int main() {
           //
           // NOTE: REMEMBER TO SET THIS TO 100 MILLISECONDS BEFORE
           // SUBMITTING.
-          this_thread::sleep_for(chrono::milliseconds(0));
+          this_thread::sleep_for(chrono::milliseconds(100));
           ws.send(msg.data(), msg.length(), uWS::OpCode::TEXT);
+
+          const time_t call_back_end_time = clock();
+          total_callback_delay_seconds = double(call_back_end_time-call_back_start_time)/double(CLOCKS_PER_SEC);
+
         }
       } else {
         // Manual driving
