@@ -35,7 +35,7 @@ int main() {
     // We set the number of timesteps to 25
   // and the timestep evaluation frequency or evaluation
   // period to 0.05.
-  const int N = 6;
+  const int N = 10;
   const double dt = 0.2;
   const double ref_v_meterspersecond = mph2mps(60.0);
 
@@ -58,61 +58,62 @@ int main() {
         string event = j[0].get<string>();
         if (event == "telemetry") {
           // j[1] is the data JSON object
+
+          // xy points along the desired trajectory in global frame
           vector<double> ptsx_vec = j[1]["ptsx"];
+          vector<double> ptsy_vec = j[1]["ptsy"];
+
+          // convert to eigen vectors
           const int numpts = ptsx_vec.size();
           Eigen::Map<Eigen::VectorXd> ptsx(ptsx_vec.data(),numpts);
-          vector<double> ptsy_vec = j[1]["ptsy"];
           Eigen::Map<Eigen::VectorXd> ptsy(ptsy_vec.data(),numpts);
 
+          // current state
           const double px = j[1]["x"];
           const double py = j[1]["y"];
           const double psi = j[1]["psi"];
           const double current_speed_mps = mph2mps(j[1]["speed"]);
-          const double current_steering_angle_rad = double(j[1]["steering_angle"]);
 
+          // convert desired tracjectory to vehicle frame
           Eigen::VectorXd ptsx_veh;
           Eigen::VectorXd ptsy_veh;
           std::tie(ptsx_veh,ptsy_veh) = global2veh(px,py,psi,ptsx,ptsy);
 
+          // fit desired trajectory with cubic polynomial
           const Eigen::VectorXd poly_coeffs = polyfit(ptsx_veh,ptsy_veh,3);
 
+          // cross track error is first coefficient, f(0)
           const double cte = poly_coeffs[0];
 
+          // heading error is -f'(0)
           const double epsi = -atan(poly_coeffs[1]);
 
+          // current state in vehicle frame
           Eigen::VectorXd state(6);
           state << 0.0,0.0,0.0,current_speed_mps,cte,epsi;
 
+          // call the solver
           vector<double> solutionx = mpc.Solve(state,poly_coeffs,N,dt,ref_v_meterspersecond);
 
+          //grab the coordinates of the controlled trajectory for plotting
           vector<double>::const_iterator first;
           vector<double>::const_iterator last;
-
           first = solutionx.begin();
           last = solutionx.begin() + N;
           vector<double> solx(first, last);
-
           first = solutionx.begin() + N;
           last = solutionx.begin() + 2*N;
           vector<double> soly(first, last);
 
-          first = solutionx.begin() + 6*N;
-          last = solutionx.begin() + 7*N-1;
-          vector<double> soldelta(first, last);
-
-          first = solutionx.begin() + 7*N-1;
-          last = solutionx.begin() + 8*N-2;
-          vector<double> sola(first, last);
-
-          const double steer_value = soldelta[0];
-          const double throttle_value = sola[0];
+          // also grab the currently recommended steer and throttle values
+          const double steer_value = solutionx[6*N];
+          const double throttle_value = solutionx[7*N-1];
 
           json msgJson;
           // NOTE: Remember to divide by deg2rad(25) before you send the steering value back.
           // Otherwise the values will be in between [-deg2rad(25), deg2rad(25] instead of [-1, 1].
           msgJson["steering_angle"] = (steer_value/deg2rad(25.0));
           msgJson["throttle"] = throttle_value;
-
 
           //.. add (x,y) points to list here, points are in reference to the vehicle's coordinate system
           // the points in the simulator are connected by a Green line

@@ -14,9 +14,12 @@ const double Lf = 2.67;
 
 class FG_eval {
  public:
-  Eigen::VectorXd coeffs;
+
+
+  
   // Coefficients of the fitted polynomial.
   FG_eval(Eigen::VectorXd coeffs, const int N, const double dt, const double ref_v_meterspersecond) :
+  coeffs(coeffs),
   N(N),
   dt(dt),
   ref_v_meterspersecond(ref_v_meterspersecond),
@@ -28,7 +31,7 @@ class FG_eval {
   epsi_start(cte_start+N),
   delta_start(epsi_start+N),
   a_start(delta_start+N-1)
-  { this->coeffs = coeffs; }
+  { }
 
   typedef CPPAD_TESTVECTOR(AD<double>) ADvector;
   // `fg` is a vector containing the cost and constraints.
@@ -46,18 +49,6 @@ class FG_eval {
       fg[0] += 3000*CppAD::pow(vars[epsi_start + i], 2);
       fg[0] += CppAD::pow(vars[v_start + i] - ref_v_meterspersecond, 2);
     }
-
-    // for (int i = 0; i < N - 1; i++) {
-    //   fg[0] += 5*CppAD::pow(vars[delta_start + i], 2);
-    //   fg[0] += 5*CppAD::pow(vars[a_start + i], 2);
-    //   // try adding penalty for speed + steer
-    //   fg[0] += 700*CppAD::pow(vars[delta_start + i] * vars[v_start+i], 2);
-    // }
-
-    // for (int i = 0; i < N - 2; i++) {
-    //   fg[0] += 200*CppAD::pow(vars[delta_start + i + 1] - vars[delta_start + i], 2);
-    //   fg[0] += 10*CppAD::pow(vars[a_start + i + 1] - vars[a_start + i], 2);
-    // }
 
     //
     // Setup Constraints
@@ -96,7 +87,7 @@ class FG_eval {
       AD<double> a0 = vars[a_start + t - 1];
 
       AD<double> f0 = coeffs[0] + coeffs[1]*x0 + coeffs[2]*x0*x0 + coeffs[3]*x0*x0*x0;
-      AD<double> psides0 = CppAD::atan(coeffs[1] + 2 * coeffs[2] * x0 + 3 * coeffs[3] * CppAD::pow(x0, 2));
+      AD<double> psides0 = CppAD::atan(coeffs[1] + 2*coeffs[2]*x0 + 3*coeffs[3]*CppAD::pow(x0, 2));
 
       // Recall the equations for the model:
       // x_[t+1] = x[t] + v[t] * cos(psi[t]) * dt
@@ -118,6 +109,7 @@ private:
   // The solver takes all the state variables and actuator
 // variables in a singular vector. Thus, we should to establish
 // when one variable starts and another ends to make our lifes easier.
+  const Eigen::VectorXd coeffs;
   const int N;
   const double dt;
   const double ref_v_meterspersecond;

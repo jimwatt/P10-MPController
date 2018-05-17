@@ -4,9 +4,9 @@ set(CMAKE_DEPENDS_LANGUAGES
   )
 # The set of files for implicit dependencies of each language:
 set(CMAKE_DEPENDS_CHECK_CXX
-  "/home/philip/SDC/P10-MPCcontroller/src/MPC.cpp" "/home/philip/SDC/P10-MPCcontroller/build/CMakeFiles/mpc.dir/src/MPC.cpp.o"
-  "/home/philip/SDC/P10-MPCcontroller/src/main.cpp" "/home/philip/SDC/P10-MPCcontroller/build/CMakeFiles/mpc.dir/src/main.cpp.o"
-  "/home/philip/SDC/P10-MPCcontroller/src/utilities.cpp" "/home/philip/SDC/P10-MPCcontroller/build/CMakeFiles/mpc.dir/src/utilities.cpp.o"
+  "/home/philip/SDC/P10-MPController/src/MPC.cpp" "/home/philip/SDC/P10-MPController/build/CMakeFiles/mpc.dir/src/MPC.cpp.o"
+  "/home/philip/SDC/P10-MPController/src/main.cpp" "/home/philip/SDC/P10-MPController/build/CMakeFiles/mpc.dir/src/main.cpp.o"
+  "/home/philip/SDC/P10-MPController/src/utilities.cpp" "/home/philip/SDC/P10-MPController/build/CMakeFiles/mpc.dir/src/utilities.cpp.o"
   )
 set(CMAKE_CXX_COMPILER_ID "GNU")
 

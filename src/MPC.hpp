@@ -13,5 +13,10 @@ class MPC {
 
   // Solve the model given an initial state and polynomial coefficients.
   vector<double> Solve(const Eigen::VectorXd& state, const Eigen::VectorXd& coeffs, const int N, const double dt, const double ref_v_meterspersecond);
+
+private:
+
+	
+
 };
 
