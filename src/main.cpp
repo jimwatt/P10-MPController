@@ -104,7 +104,7 @@ int main() {
           state << 0.0,0.0,0.0,current_speed_mps,cte,epsi;
 
           // predict where the vehicle will be after the latency 
-          const double dts = 0.1+total_callback_delay_seconds;
+          const double dts = 0.1;//+total_callback_delay_seconds;
           state[0] = current_speed_mps*dts;
           state[1] = 0;
           state[2] = - current_speed_mps / Lf * current_steering_angle *dts;
