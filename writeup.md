@@ -36,7 +36,7 @@ The goals / steps of this project are the following:
 
   $$\dot{y} = v \sin \psi $$
 
-  $$\dot\psi = \frac{v}{L_f} \cdot \delta$$
+  $$\dot\psi = -\frac{v}{L_f} \cdot \delta$$
 
   $$\dot{v} =  a$$
 
