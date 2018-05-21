@@ -14,8 +14,6 @@ const double Lf = 2.67;
 
 class FG_eval {
  public:
-
-
   
   // Coefficients of the fitted polynomial.
   FG_eval(Eigen::VectorXd coeffs, const int N, const double dt, const double ref_v_meterspersecond) :

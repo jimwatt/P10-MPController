@@ -28,6 +28,20 @@ string hasData(string s) {
   return "";
 }
 
+void propagate_state(const double dt, const double Lf, const double a, const double delta, Eigen::VectorXd& state) {
+
+  const double x = state[0];
+  const double y = state[1];
+  const double phi = state[2];
+  const double v = state[3];
+
+  state[0] = x + v*cos(phi)*dt;
+  state[1] = y + v*sin(phi)*dt;
+  state[2] = phi - v/Lf*delta*dt;
+  state[3] = v + a*dt;
+
+}
+
 
 
 int main() {
@@ -36,13 +50,13 @@ int main() {
   // Set all the paraemters here
   const int N = 10;
   const double dt = 0.2;
-  const double ref_v_meterspersecond = mph2mps(60.0);
+  const double ref_v_meterspersecond = mph2mps(40.0);
   const double Lf = 2.67;
 
   ////////////////////////////////////////////////////
 
 
-  double total_callback_delay_seconds = 0.1;  //initialize the call back delay to the added delay
+  double total_callback_delay_useconds = 1.0e5;  //initialize the call back delay to the added delay
   uWS::Hub h;
 
   // MPC is initialized here!
@@ -53,7 +67,7 @@ int main() {
     &dt,
     &ref_v_meterspersecond,
     &Lf,
-    &total_callback_delay_seconds]
+    &total_callback_delay_useconds]
   (uWS::WebSocket<uWS::SERVER> ws, char *data, size_t length, uWS::OpCode opCode) {
 
     string sdata = string(data).substr(0, length);
@@ -64,8 +78,7 @@ int main() {
         string event = j[0].get<string>();
         if (event == "telemetry") {
 
-          const time_t call_back_start_time = clock();
-
+          auto start = std::chrono::high_resolution_clock::now();
           // j[1] is the data JSON object
 
           // xy points along the desired trajectory in global frame
@@ -84,11 +97,20 @@ int main() {
           const double current_speed_mps = mph2mps(j[1]["speed"]);
           const double current_steering_angle = j[1]["steering_angle"];
           const double current_throttle = j[1]["throttle"];
+          Eigen::VectorXd state(4);
+          state << px,py,psi,current_speed_mps;
+
+          // account for delay in state by propagating state forward
+          propagate_state(total_callback_delay_useconds/1.0e6,
+            Lf,
+            current_throttle,
+            current_steering_angle,
+            state);
 
           // convert desired tracjectory to vehicle frame
           Eigen::VectorXd ptsx_veh;
           Eigen::VectorXd ptsy_veh;
-          std::tie(ptsx_veh,ptsy_veh) = global2veh(px,py,psi,ptsx,ptsy);
+          std::tie(ptsx_veh,ptsy_veh) = global2veh(state[0],state[1],state[2],ptsx,ptsy);
 
           // fit desired trajectory with cubic polynomial
           const Eigen::VectorXd poly_coeffs = polyfit(ptsx_veh,ptsy_veh,3);
@@ -97,23 +119,16 @@ int main() {
           const double cte = poly_coeffs[0];
 
           // heading error is -f'(0)
-          const double epsi = -atan(poly_coeffs[1]);
+          const double epsi = atan(poly_coeffs[1]);
 
           // current state in vehicle frame
-          Eigen::VectorXd state(6);
-          state << 0.0,0.0,0.0,current_speed_mps,cte,epsi;
+          Eigen::VectorXd augstate(6);
+          augstate << 0.0,0.0,0.0,current_speed_mps,cte,epsi;
 
-          // predict where the vehicle will be after the latency 
-          const double dts = 0.1;//+total_callback_delay_seconds;
-          state[0] = current_speed_mps*dts;
-          state[1] = 0;
-          state[2] = - current_speed_mps / Lf * current_steering_angle *dts;
-          state[3] = current_speed_mps + current_throttle*dts;
-          state[4] = cte + current_speed_mps*sin(epsi)*dts;
-          state[5] = epsi - current_speed_mps / Lf * current_steering_angle *dts;
+    
 
           // call the solver
-          vector<double> solutionx = mpc.Solve(state,poly_coeffs,N,dt,ref_v_meterspersecond);
+          vector<double> solutionx = mpc.Solve(augstate,poly_coeffs,N,dt,ref_v_meterspersecond);
 
           //grab the coordinates of the controlled trajectory for plotting
           vector<double>::const_iterator first;
@@ -163,10 +178,13 @@ int main() {
           // NOTE: REMEMBER TO SET THIS TO 100 MILLISECONDS BEFORE
           // SUBMITTING.
           this_thread::sleep_for(chrono::milliseconds(100));
-          ws.send(msg.data(), msg.length(), uWS::OpCode::TEXT);
 
-          const time_t call_back_end_time = clock();
-          total_callback_delay_seconds = double(call_back_end_time-call_back_start_time)/double(CLOCKS_PER_SEC);
+          auto end = std::chrono::high_resolution_clock::now();
+          std::chrono::duration<double, std::ratio<1,1000000> > elapsed = end-start;
+          total_callback_delay_useconds = elapsed.count();
+          std::cout << total_callback_delay_useconds/1e3 << " milliseconds" << std::endl;
+
+          ws.send(msg.data(), msg.length(), uWS::OpCode::TEXT);
 
         }
       } else {
