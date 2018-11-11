@@ -1,5 +1,7 @@
 # Model Predictive Control
 
+![mpc](mpc.png)
+
 This project is in conjunction with the Udacity Self-Driving Car course.  In particular, the goal of this project is to implement a simple model predictive controller to safely throttle and steer a simulated car around a track. 
 
 * More detail about the approach is provided in [writeup.md](./writeup.md).
